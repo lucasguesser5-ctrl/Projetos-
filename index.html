@@ -1,0 +1,847 @@
+<!DOCTYPE html><html lang="pt-BR" data-theme="noturno">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Relatório de Ocorrência Pós-Trauma — Orbenk</title>
+<!-- Leaflet CSS e JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+/* =========================================================    TEMAS DE TELA ========================================================= */
+:root[data-theme="escuro"]{    --bg:#05080d;    --panel:#0b111a;    --panel2:#0e1622;    --input:#0a1018;    --line:#164d86;    --line2:#12365c;    --text:#f1f5f9;    --muted:#8ea5c0;    --blue:#087df5;    --blue2:#2196ff;    --danger:#ef4444;    --danger-bg:#351014;    --ok:#22c55e;    --shadow:0 10px 35px rgba(0,0,0,.45);}
+:root[data-theme="noturno"]{    --bg:#07152b;    --panel:#0b2346;    --panel2:#0d2a54;    --input:#0a2040;    --line:#1765b0;    --line2:#17487b;    --text:#f2f7ff;    --muted:#91afd0;    --blue:#1585f5;    --blue2:#3182ce;    --danger:#ef4444;    --danger-bg:#40151b;    --ok:#22c55e;    --shadow:0 10px 35px rgba(0,0,0,.35);}
+:root[data-theme="claro"]{    --bg:#eef3f8;    --panel:#ffffff;    --panel2:#f5f8fc;    --input:#ffffff;    --line:#b8cbe0;    --line2:#d9e3ee;    --text:#10213d;    --muted:#607089;    --blue:#123f7a;    --blue2:#1c5da8;    --danger:#c62828;    --danger-bg:#fff0f0;    --ok:#16834d;    --shadow:0 7px 25px rgba(18,63,122,.10);}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;padding-bottom:90px;transition:.2s;}
+button,input,select,textarea{font-family:inherit;}
+button{cursor:pointer;}
+
+/* =========================================================    CABEÇALHO ========================================================= */
+.topbar{position:sticky;top:0;z-index:50;background:var(--panel);border-bottom:1px solid var(--line);box-shadow:var(--shadow);}
+.header{max-width:1250px;margin:auto;padding:12px 20px;min-height:70px;display:flex;align-items:center;justify-content:space-between;gap:20px;}
+.logo-area{display:flex;align-items:center;gap:16px;min-width:0;}
+.logo{width:145px;height:auto;display:block;}
+.divider{width:1px;height:34px;background:var(--line);}
+.title{font-size:16px;font-weight:bold;white-space:nowrap;}
+.subtitle{color:var(--muted);font-size:12px;margin-top:2px;}
+.theme-box{display:flex;align-items:center;gap:8px;}
+.theme-box label{color:var(--muted);font-size:12px;}
+.theme-box select{width:130px;}
+
+.container{max-width:1150px;margin:22px auto;padding:0 18px;}
+.alert{display:none;background:var(--danger-bg);border:1px solid var(--danger);color:#ffb7b7;border-radius:8px;padding:12px 15px;margin-bottom:14px;font-weight:bold;}
+
+/* =========================================================    BLOCOS DE TELA ========================================================= */
+.block{background:var(--panel);border:1px solid var(--line2);border-radius:9px;margin-bottom:14px;box-shadow:var(--shadow);}
+.block summary{list-style:none;cursor:pointer;user-select:none;display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--panel2);border-bottom:1px solid transparent;border-radius:9px;}
+.block[open] summary{border-bottom:1px solid var(--line2);border-radius:9px 9px 0 0;}
+.block summary::-webkit-details-marker{display:none;}
+.num{width:26px;height:26px;min-width:26px;border-radius:50%;background:var(--blue);color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;}
+.block-title{font-size:15px;font-weight:bold;flex:1;}
+.arrow{color:var(--muted);font-size:15px;transition:.2s;}
+.block[open] .arrow{transform:rotate(180deg);}
+.block-body{padding:18px;}
+
+.grid2,.grid3,.grid4{display:grid;gap:15px;}
+.grid2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.grid3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.grid4{grid-template-columns:repeat(4,minmax(0,1fr));}
+
+.field{margin-bottom:14px;}
+.field label,.field-title{display:block;color:var(--muted);font-size:11.5px;font-weight:bold;margin-bottom:6px;}
+input[type="text"],input[type="date"],input[type="time"],select,textarea{width:100%;color:var(--text);background:var(--input);border:1px solid var(--line2);border-radius:6px;padding:11px 12px;font-size:14px;outline:none;transition:.15s;}
+input:focus,select:focus,textarea:focus{border-color:var(--blue2);box-shadow:0 0 0 2px rgba(33,150,255,.15);}
+textarea{min-height:120px;resize:vertical;}
+option{background:var(--panel);color:var(--text);}
+
+.autocomplete-wrapper {position:relative;}
+.suggestions-box {position:absolute;top:100%;left:0;right:0;background:var(--panel);border:1px solid var(--line);border-radius:0 0 6px 6px;z-index:99;max-height:190px;overflow-y:auto;box-shadow:var(--shadow);display:none;}
+.suggestion-item {padding:10px 12px;font-size:13.5px;cursor:pointer;border-bottom:1px solid var(--line2);}
+.suggestion-item:hover {background:var(--panel2);}
+
+/* =========================================================    MAPAS DE TELA ========================================================= */
+.maps-container-custom {background:var(--panel2);border:1px solid var(--line);border-radius:8px;overflow:hidden;padding:12px;display:flex;flex-direction:column;gap:12px;margin-top:16px;}
+.maps-section-title {font-size:11.5px;font-weight:bold;color:var(--blue2);letter-spacing:0.5px;padding:2px 4px;display:flex;align-items:center;gap:6px;}
+.map-box-wrapper {position:relative;border-radius:6px;overflow:hidden;border:1px solid var(--line2);background:var(--panel);transition: background 0.3s ease, border-color 0.3s ease;}
+.map-view {width:100%;}
+.map-main {height:240px;}
+.map-sub-row {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.map-sub {height:150px;}
+.btn-maps-float {position:absolute;top:10px;left:10px;z-index:400;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:4px 10px;font-size:11.5px;font-weight:bold;text-decoration:none;box-shadow:0 1px 4px rgba(0,0,0,0.3);display:flex;align-items:center;gap:4px;}
+.leaflet-container { background: var(--panel) !important; z-index: 1 !important; }
+
+/* =========================================================    ANEXO DE IMAGENS ========================================================= */
+.upload-dropzone {border:2px dashed var(--line);border-radius:8px;padding:24px;text-align:center;background:var(--input);cursor:pointer;transition:.2s;}
+.upload-dropzone:hover {border-color:var(--blue2);background:var(--panel2);}
+.upload-dropzone input {display:none;}
+.upload-text {color:var(--muted);font-size:13px;margin-top:6px;}
+.image-preview-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px;margin-top:14px;}
+.image-thumb-card {position:relative;border-radius:6px;overflow:hidden;border:1px solid var(--line2);background:var(--input);aspect-ratio:1;}
+.image-thumb-card img {width:100%;height:100%;object-fit:cover;}
+.image-thumb-remove {position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:white;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.image-thumb-remove:hover {background:var(--danger);}
+
+.options{display:flex;flex-wrap:wrap;gap:10px 22px;padding-top:2px;}
+.options label{color:var(--text);font-weight:normal;font-size:14px;display:flex;align-items:center;gap:8px;}
+.check-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 24px;}
+.check-grid label{display:flex;align-items:center;gap:8px;color:var(--text);font-size:14px;}
+input[type="checkbox"],input[type="radio"]{accent-color:var(--blue);width:16px;height:16px;}
+
+.witness{background:var(--panel2);border:1px solid var(--line2);border-radius:7px;padding:14px;margin-bottom:12px;}
+.witness-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-weight:bold;}
+
+.btn{border:1px solid transparent;border-radius:6px;padding:11px 18px;font-weight:bold;font-size:13.5px;}
+.btn-primary{background:var(--blue);color:#fff;}
+.btn-primary:hover{background:var(--blue2);}
+.btn-secondary{background:transparent;border-color:var(--line);color:var(--text);}
+.btn-danger{background:#8f1d25;color:white;}
+.btn-add{margin-top:4px;}
+
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--panel);border-top:1px solid var(--line);padding:12px 20px;display:flex;justify-content:center;gap:12px;box-shadow:0 -8px 30px rgba(0,0,0,.25);}
+.oculto-condicional {display:none !important;}
+.print-only-header, .print-executive-report {display: none;}
+
+/* =========================================================================================
+   ESTILO EXCLUSIVO DE IMPRESSÃO / PDF (PAISAGEM / LANDSCAPE)
+   ========================================================================================= */
+@media print {
+    @page { size: A4 landscape; margin: 10mm 12mm 10mm 12mm; }
+    body { background: #ffffff !important; color: #111827 !important; font-size: 9pt; line-height: 1.4; padding-bottom: 0 !important; }
+    
+    /* Ocultar elementos de interface e formulário */
+    .topbar, .bottom-bar, .alert, .theme-box, .btn, .suggestions-box, .arrow, .upload-dropzone, details.block { display: none !important; }
+
+    /* Exibir cabeçalho e relatório formatado sem o termo "EXECUTIVO" */
+    .print-only-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 6px; margin-bottom: 10px; }
+    .print-brand-row { display: flex; justify-content: space-between; align-items: center; }
+    .print-company { font-size: 16pt; font-weight: bold; color: #1e3a8a; }
+    .print-doc-meta { text-align: right; font-size: 8pt; color: #4b5563; }
+    .print-doc-title { font-size: 11pt; font-weight: bold; color: #111827; margin-top: 2px; text-transform: uppercase; }
+
+    .print-executive-report { display: block !important; }
+
+    /* Layout em Grid / Blocos limpos para impressão */
+    .exec-section { background: #ffffff; border: 1px solid #cbd5e1; border-left: 3px solid #1e3a8a; border-radius: 4px; padding: 8px 12px; margin-bottom: 8px; page-break-inside: avoid; }
+    .exec-section-title { font-size: 9.5pt; font-weight: bold; color: #1e3a8a; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px; margin-bottom: 6px; }
+    .exec-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 12px; }
+    .exec-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; }
+    .exec-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+    .exec-field { font-size: 8.5pt; color: #374151; }
+    .exec-field strong { color: #111827; display: block; font-size: 7.5pt; text-transform: uppercase; color: #6b7280; margin-bottom: 1px; }
+    .exec-full { grid-column: 1 / -1; }
+    
+    .exec-text-block { background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 8px; border-radius: 3px; font-size: 8.5pt; color: #1f2937; margin-top: 4px; white-space: pre-wrap; }
+
+    /* Mapas e imagens no relatório impresso */
+    .maps-container-custom { background: #ffffff !important; border: 1px solid #cbd5e1 !important; padding: 6px !important; margin-top: 4px !important; page-break-inside: avoid; }
+    .maps-section-title { color: #1e3a8a !important; font-size: 8pt !important; }
+    .map-box-wrapper { border: 1px solid #cbd5e1 !important; }
+    .btn-maps-float { display: none !important; }
+    .map-main { height: 130px !important; }
+    .map-sub { height: 90px !important; }
+
+    .image-thumb-remove { display: none !important; }
+    .image-preview-grid { grid-template-columns: repeat(6, 1fr) !important; gap: 6px !important; margin-top: 6px !important; }
+    .image-thumb-card { aspect-ratio: auto !important; height: 70px !important; background: #f3f4f6 !important; border: 1px solid #d1d5db !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+    .image-thumb-card img { width: 100% !important; height: 100% !important; object-fit: contain !important; }
+}
+</style></head>
+
+<body>
+
+<header class="topbar">
+<div class="header">
+    <div class="logo-area">
+        <svg class="logo" viewBox="0 0 430 110" xmlns="http://www.w3.org/2000/svg" aria-label="Orbenk">
+            <text x="5" y="82" font-family="Arial, Helvetica, sans-serif" font-size="88" font-weight="700" fill="#1557a6">Orbenk</text>
+        </svg>
+        <div class="divider"></div>
+        <div>
+            <div class="title">Registro de Ocorrências — Pós-Trauma</div>
+            <div class="subtitle">Central de Monitoramento</div>
+        </div>
+    </div>
+    <div class="theme-box">
+        <label for="theme">Tema</label>
+        <select id="theme" onchange="changeTheme(this.value)">
+            <option value="escuro">Escuro</option>
+            <option value="noturno" selected>Noturno</option>
+            <option value="claro">Claro</option>
+        </select>
+    </div>
+</div>
+</header>
+
+<main class="container">
+<div id="alertBox" class="alert"></div>
+
+<!-- CABEÇALHO DO RELATÓRIO IMPRESSO / PDF (SEM A PALAVRA "EXECUTIVO") -->
+<div class="print-only-header">
+    <div class="print-brand-row">
+        <div class="print-company">Orbenk — Segurança Privada</div>
+        <div class="print-doc-meta">
+            <div><strong>Central de Operações e Monitoramento</strong></div>
+            <div>Data de Emissão: <span id="printDataEmissao"></span></div>
+        </div>
+    </div>
+    <div class="print-doc-title">Relatório Técnico de Atendimento Pós-Trauma</div>
+</div>
+
+<!-- =========================================================================
+     RELATÓRIO FORMATADO PARA IMPRESSÃO
+     ========================================================================= -->
+<div class="print-executive-report" id="execReportContainer">
+    <!-- Bloco 1: Identificação & Dados Gerais -->
+    <div class="exec-section">
+        <div class="exec-section-title">1. Dados do Atendimento e Identificação</div>
+        <div class="exec-grid">
+            <div class="exec-field"><strong>Protocolo</strong> <span id="r-protocolo">—</span></div>
+            <div class="exec-field"><strong>Operador Responsável</strong> <span id="r-operador">—</span></div>
+            <div class="exec-field"><strong>Turno</strong> <span id="r-turno">—</span></div>
+            <div class="exec-field"><strong>Data / Hora</strong> <span id="r-datahora">—</span></div>
+        </div>
+    </div>
+
+    <!-- Bloco 2: Localização & Cliente -->
+    <div class="exec-section">
+        <div class="exec-section-title">2. Cliente e Localização do Evento</div>
+        <div class="exec-grid-2" style="margin-bottom: 6px;">
+            <div class="exec-field"><strong>Cliente / Razão Social</strong> <span id="r-cliente">—</span></div>
+            <div class="exec-field"><strong>Cidade / Regional</strong> <span id="r-cidade">—</span></div>
+            <div class="exec-field exec-full"><strong>Endereço Completo</strong> <span id="r-endereco">—</span></div>
+            <div class="exec-field"><strong>Contato no Local</strong> <span id="r-contatoNome">—</span></div>
+            <div class="exec-field"><strong>Telefone</strong> <span id="r-contatoTel">—</span></div>
+        </div>
+        
+        <!-- Mapas no Relatório Impresso -->
+        <div class="maps-container-custom">
+            <div class="maps-section-title">🗺️ LOCALIZAÇÃO GEOGRÁFICA & SATÉLITE</div>
+            <div class="map-box-wrapper">
+                <div id="mapaPrincipalPrint" class="map-view map-main"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bloco 3: Ocorrência, Serviços & Alarme -->
+    <div class="exec-section">
+        <div class="exec-section-title">3. Classificação e Parâmetros da Ocorrência</div>
+        <div class="exec-grid-3">
+            <div class="exec-field"><strong>Serviços Contratados</strong> <span id="r-servicos">—</span></div>
+            <div class="exec-field"><strong>Tipos de Ocorrência</strong> <span id="r-tiposOcorrencia">—</span></div>
+            <div class="exec-field"><strong>Autoridades Acionadas</strong> <span id="r-autoridades">—</span></div>
+            <div class="exec-field"><strong>Sistema de Alarme</strong> <span id="r-alarmeStatus">—</span></div>
+            <div class="exec-field"><strong>Zona Disparada</strong> <span id="r-zonaDisparada">—</span></div>
+            <div class="exec-field"><strong>Boletim de Ocorrência (B.O.)</strong> <span id="r-numeroBO">—</span></div>
+        </div>
+    </div>
+
+    <!-- Bloco 4: Tempos de Atendimento & Vítimas / Vigilante -->
+    <div class="exec-section">
+        <div class="exec-section-title">4. Tempos de Resposta, Vítimas e Segurança</div>
+        <div class="exec-grid">
+            <div class="exec-field"><strong>Disparo de Alarme</strong> <span id="r-disparoSimNao">—</span></div>
+            <div class="exec-field"><strong>Horário do Disparo</strong> <span id="r-horaDisparo">—</span></div>
+            <div class="exec-field"><strong>Chegada no Local</strong> <span id="r-horaAtendente">—</span></div>
+            <div class="exec-field"><strong>Tempo Total</strong> <span id="r-tempoTotalAtend">—</span></div>
+            <div class="exec-field"><strong>Vítimas Envolvidas</strong> <span id="r-vitimasInfo">—</span></div>
+            <div class="exec-field"><strong>Segurança no Local</strong> <span id="r-vigilanteInfo">—</span></div>
+        </div>
+    </div>
+
+    <!-- Bloco 5: Danos Materiais -->
+    <div class="exec-section" id="sec-danos-print">
+        <div class="exec-section-title">5. Danos e Perdas Materiais</div>
+        <div class="exec-text-block" id="r-danosDesc">Nenhum dano material informado.</div>
+    </div>
+
+    <!-- Bloco 6: Testemunhas -->
+    <div class="exec-section" id="sec-testemunhas-print">
+        <div class="exec-section-title">6. Testemunhas Registradas</div>
+        <div id="r-testemunhasList" style="font-size: 8.5pt;">Nenhuma testemunha cadastrada.</div>
+    </div>
+
+    <!-- Bloco 7: Relato Detalhado e Providências -->
+    <div class="exec-section">
+        <div class="exec-section-title">7. Relato Detalhado dos Fatos e Providências Adotadas</div>
+        <div class="exec-text-block" id="r-relato">Nenhum relato detalhado preenchido.</div>
+    </div>
+
+    <!-- Bloco 8: Imagens Anexadas -->
+    <div class="exec-section" id="sec-imagens-print">
+        <div class="exec-section-title">8. Registro Fotográfico / Evidências</div>
+        <div id="r-imagePreviewGrid" class="image-preview-grid"></div>
+    </div>
+</div>
+
+
+<!-- =========================================================================
+     TELA DE PREENCHIMENTO (Interface interativa padrão para o operador)
+     ========================================================================= -->
+
+<!-- 1 — IDENTIFICAÇÃO -->
+<details class="block" open>
+<summary><span class="num">1</span><span class="block-title">Identificação do registro</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="grid3">
+<div class="field"><label for="protocolo">Protocolo</label><input type="text" id="protocolo" placeholder="Ex.: 2026-0001"></div>
+<div class="field"><label for="operador">Operador responsável</label><input type="text" id="operador"></div>
+<div class="field"><label for="turno">Turno</label><select id="turno"><option value="">Selecione</option><option>Diurno</option><option>Noturno</option></select></div>
+</div>
+</div></details>
+
+<!-- 2 — CLIENTE E LOCALIZAÇÃO -->
+<details class="block" open id="blockLocalizacao">
+<summary><span class="num">2</span><span class="block-title">Dados do cliente e localização</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="grid2">
+    <div class="field"><label for="cliente">Cliente / Razão social</label><input type="text" id="cliente"></div>
+    <div class="field"><label for="cidade">Cidade / Regional</label><input type="text" id="cidade" value="Joinville, SC"></div>
+</div>
+
+<div class="field autocomplete-wrapper">
+    <label for="endereco">Endereço completo (Rua, Número, Bairro)</label>
+    <input type="text" id="endereco" placeholder="Ex.: Rua Visconde de Taunay, 450" autocomplete="off" oninput="buscarEnderecos(this.value)">
+    <div id="suggestionsBox" class="suggestions-box"></div>
+</div>
+
+<!-- PAINEL DE MAPAS GOOGLE MAPS -->
+<div class="maps-container-custom">
+    <div class="maps-section-title">🗺️ GOOGLE MAPS</div>
+    <div class="map-box-wrapper">
+        <a id="linkMapsPrincipal" href="https://maps.google.com" target="_blank" class="btn-maps-float">Maps ↗</a>
+        <div id="mapaPrincipal" class="map-view map-main"></div>
+    </div>
+
+    <div class="maps-section-title" style="margin-top: 4px;">🛰️ GOOGLE MAPS SATÉLITE & TERRENO HD</div>
+    <div class="map-sub-row">
+        <div class="map-box-wrapper">
+            <a id="linkMapsSatelite" href="https://maps.google.com" target="_blank" class="btn-maps-float">Maps ↗</a>
+            <div id="mapaSatelite" class="map-view map-sub"></div>
+        </div>
+        <div class="map-box-wrapper">
+            <a id="linkMapsTerreno" href="https://maps.google.com" target="_blank" class="btn-maps-float">Maps ↗</a>
+            <div id="mapaTerreno" class="map-view map-sub"></div>
+        </div>
+    </div>
+</div>
+
+<div class="grid4" style="margin-top: 15px; grid-template-columns: 1fr 1fr;">
+    <div class="field"><label for="contatoNome">Contato no local</label><input type="text" id="contatoNome"></div>
+    <div class="field"><label for="contatoTel">Telefone</label><input type="text" id="contatoTel"></div>
+</div>
+
+<div class="grid2">
+    <div class="field"><label for="dataOcorrencia">Data da ocorrência</label><input type="date" id="dataOcorrencia"></div>
+    <div class="field"><label for="horaOcorrencia">Hora da ocorrência</label><input type="time" id="horaOcorrencia"></div>
+</div>
+</div></details>
+
+<!-- 3 — SERVIÇOS -->
+<details class="block" open>
+<summary><span class="num">3</span><span class="block-title">Serviços contratados</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="check-grid">
+<label><input type="checkbox" name="servico" value="Alarme">Alarme</label>
+<label><input type="checkbox" name="servico" value="CFTV">CFTV</label>
+<label><input type="checkbox" name="servico" value="Portaria remota">Portaria remota</label>
+<label><input type="checkbox" name="servico" value="Rondas">Rondas</label>
+</div>
+</div></details>
+
+<!-- 4 — ATENDIMENTO -->
+<details class="block" open>
+<summary><span class="num">4</span><span class="block-title">Tempo de atendimento</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="grid4">
+<div class="field"><span class="field-title">Disparo de alarme</span>
+<div class="options">
+<label><input type="radio" name="disparo" value="Sim" onchange="tratarCondicionais()">Sim</label>
+<label><input type="radio" name="disparo" value="Não" onchange="tratarCondicionais()">Não</label>
+</div></div>
+<div class="field cond-disparo-sim"><label for="horaDisparo">Horário do disparo</label><input type="time" id="horaDisparo"></div>
+<div class="field"><label for="horaAtendente">Hora do atendente no local</label><input type="time" id="horaAtendente"></div>
+<div class="field"><label for="tempoTotalAtend">Tempo total do atendimento</label><input type="text" id="tempoTotalAtend" placeholder="Ex.: 00:15"></div>
+</div>
+</div></details>
+
+<!-- 5 — OCORRÊNCIA -->
+<details class="block" open>
+<summary><span class="num">5</span><span class="block-title">Tipo da ocorrência</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="check-grid">
+<label><input type="checkbox" name="tipoOcorrencia" value="Arrombamento">Arrombamento</label>
+<label><input type="checkbox" name="tipoOcorrencia" value="Furto">Furto</label>
+<label><input type="checkbox" name="tipoOcorrencia" value="Vandalismo">Vandalismo</label>
+<label><input type="checkbox" name="tipoOcorrencia" value="Invasão">Invasão</label>
+<label><input type="checkbox" name="tipoOcorrencia" value="Incêndio">Incêndio</label>
+<label><input type="checkbox" name="tipoOcorrencia" value="Assalto">Assalto</label>
+<label><input type="checkbox" name="tipoOcorrencia" value="Agressão">Agressão</label>
+<label><input type="checkbox" name="tipoOcorrencia" value="Emergência">Emergência</label>
+<label><input type="checkbox" name="tipoOcorrencia" value="Acidente">Acidente</label>
+</div>
+</div></details>
+
+<!-- 6 — VÍTIMAS -->
+<details class="block" open>
+<summary><span class="num">6</span><span class="block-title">Vítimas</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="grid3">
+<div class="field"><span class="field-title">Houve vítimas?</span>
+<div class="options">
+<label><input type="radio" name="houveVitimas" value="Sim" onchange="tratarCondicionais()">Sim</label>
+<label><input type="radio" name="houveVitimas" value="Não" onchange="tratarCondicionais()">Não</label>
+</div></div>
+<div class="field cond-vitimas-sim"><label for="numVitimas">Número de vítimas</label><input type="text" id="numVitimas"></div>
+<div class="field cond-vitimas-sim"><label for="gravidadeVitima">Gravidade</label><select id="gravidadeVitima"><option value="">Selecione</option><option>Leve</option><option>Grave</option><option>Óbito</option></select></div>
+</div>
+</div></details>
+
+<!-- 7 — VIGILANTE -->
+<details class="block" open>
+<summary><span class="num">7</span><span class="block-title">Segurança patrimonial — Vigilante</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="grid3">
+<div class="field"><span class="field-title">Vigilante no local?</span>
+<div class="options">
+<label><input type="radio" name="vigNoLocal" value="Sim" onchange="tratarCondicionais()">Sim</label>
+<label><input type="radio" name="vigNoLocal" value="Não" onchange="tratarCondicionais()">Não</label>
+</div></div>
+<div class="field cond-vig-local"><label for="nomeVigilante">Nome do vigilante</label><input type="text" id="nomeVigilante"></div>
+<div class="field cond-vig-local"><span class="field-title">Vigilante rendido?</span>
+<div class="options">
+<label><input type="radio" name="vigRendido" value="Sim">Sim</label>
+<label><input type="radio" name="vigRendido" value="Não">Não</label>
+</div></div>
+</div>
+</div></details>
+
+<!-- 8 — DANOS -->
+<details class="block" open>
+<summary><span class="num">8</span><span class="block-title">Danos e perdas materiais</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="field"><label for="danosDesc">Descrição dos danos</label><textarea id="danosDesc"></textarea></div>
+<div class="field"><label for="numeroBO">Número do BO</label><input type="text" id="numeroBO"></div>
+</div></details>
+
+<!-- 9 — ANEXO DE IMAGENS -->
+<details class="block" open>
+<summary><span class="num">9</span><span class="block-title">Anexo de imagens da ocorrência</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="upload-dropzone" onclick="document.getElementById('fileInputImages').click()">
+    <div style="font-size:24px;">📷</div>
+    <div style="font-weight:bold;margin-top:6px;color:var(--text);">Clique para anexar imagens ou arraste aqui</div>
+    <div class="upload-text">Formatos suportados: PNG, JPG, JPEG (Múltiplos arquivos permitidos)</div>
+    <input type="file" id="fileInputImages" accept="image/*" multiple onchange="tratarImagens(this.files)">
+</div>
+<div id="imagePreviewGrid" class="image-preview-grid"></div>
+</div></details>
+
+<!-- 10 — ALARME -->
+<details class="block" open>
+<summary><span class="num">10</span><span class="block-title">Sistema de alarme</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="grid2">
+<div class="field"><span class="field-title">Situação</span>
+<div class="options">
+<label><input type="radio" name="sistemaAlarme" value="Armado">Armado</label>
+<label><input type="radio" name="sistemaAlarme" value="Desarmado">Desarmado</label>
+</div></div>
+<div class="field"><label for="zonaDisparada">Zona disparada</label><input type="text" id="zonaDisparada"></div>
+</div>
+</div></details>
+
+<!-- 11 — AUTORIDADES -->
+<details class="block" open>
+<summary><span class="num">11</span><span class="block-title">Autoridades acionadas</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="check-grid">
+<label><input type="checkbox" name="autoridade" value="Polícia Militar">Polícia Militar</label>
+<label><input type="checkbox" name="autoridade" value="Polícia Civil">Polícia Civil</label>
+<label><input type="checkbox" name="autoridade" value="Bombeiros">Bombeiros</label>
+<label><input type="checkbox" name="autoridade" value="SAMU">SAMU</label>
+<label><input type="checkbox" name="autoridade" value="Guarda Municipal">Guarda Municipal</label>
+</div>
+</div></details>
+
+<!-- 12 — TESTEMUNHAS -->
+<details class="block" open>
+<summary><span class="num">12</span><span class="block-title">Testemunhas</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div id="witnessList"></div>
+<button type="button" class="btn btn-primary btn-add" onclick="addWitness()">+ Adicionar testemunha</button>
+</div></details>
+
+<!-- 13 — RELATO -->
+<details class="block" open>
+<summary><span class="num">13</span><span class="block-title">Relato e providências</span><span class="arrow">⌄</span></summary>
+<div class="block-body">
+<div class="field"><label for="relato">Relato detalhado</label><textarea id="relato" placeholder="Descreva os fatos..."></textarea></div>
+</div></details>
+
+</main>
+
+<div class="bottom-bar">
+<button type="button" class="btn btn-secondary" onclick="clearForm()">🗑 Limpar</button>
+<button type="button" class="btn btn-primary" onclick="validateAndPrint()">🖨 Imprimir / PDF</button>
+</div>
+
+<script>
+function changeTheme(theme){ document.documentElement.setAttribute("data-theme", theme); }
+
+function radioValue(name){
+    const el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : "";
+}
+
+function tratarCondicionais() {
+    const vigLocal = radioValue("vigNoLocal");
+    document.querySelectorAll('.cond-vig-local').forEach(el => {
+        el.classList.toggle('oculto-condicional', vigLocal === "Não");
+    });
+    const vitimas = radioValue("houveVitimas");
+    document.querySelectorAll('.cond-vitimas-sim').forEach(el => {
+        el.classList.toggle('oculto-condicional', vitimas === "Não" || vitimas === "");
+    });
+    const disparo = radioValue("disparo");
+    document.querySelectorAll('.cond-disparo-sim').forEach(el => {
+        el.classList.toggle('oculto-condicional', disparo !== "Sim");
+    });
+}
+
+document.addEventListener("change", function(event) {
+    if (event.target.matches('input[type="radio"]')) {
+        tratarCondicionais();
+    }
+});
+
+let uploadedImages = [];
+function tratarImagens(files) {
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            uploadedImages.push(e.target.result);
+            renderizarImagens();
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function renderizarImagens() {
+    const grid = document.getElementById("imagePreviewGrid");
+    const gridPrint = document.getElementById("r-imagePreviewGrid");
+    grid.innerHTML = "";
+    gridPrint.innerHTML = "";
+    
+    if(uploadedImages.length === 0) {
+        document.getElementById("sec-imagens-print").style.display = "none";
+        return;
+    } else {
+        document.getElementById("sec-imagens-print").style.display = "block";
+    }
+
+    uploadedImages.forEach((src, index) => {
+        const card = document.createElement("div");
+        card.className = "image-thumb-card";
+        card.innerHTML = `
+            <img src="${src}" alt="Anexo">
+            <button type="button" class="image-thumb-remove" onclick="removerImagem(${index})">×</button>
+        `;
+        grid.appendChild(card);
+
+        const cardPrint = document.createElement("div");
+        cardPrint.className = "image-thumb-card";
+        cardPrint.innerHTML = `<img src="${src}" alt="Evidência ${index+1}">`;
+        gridPrint.appendChild(cardPrint);
+    });
+}
+
+function removerImagem(index) {
+    uploadedImages.splice(index, 1);
+    renderizarImagens();
+}
+
+let witnessCount = 0;
+function addWitness(){
+    witnessCount++;
+    const container = document.getElementById("witnessList");
+    const div = document.createElement("div");
+    div.className = "witness";
+    div.id = "witness-" + witnessCount;
+    div.innerHTML = `
+        <div class="witness-header">
+            <span>Testemunha #${witnessCount}</span>
+            <button type="button" class="btn btn-danger" style="padding:4px 8px;font-size:11.5px;" onclick="removeWitness(${witnessCount})">Remover</button>
+        </div>
+        <div class="grid3">
+            <div class="field"><label>Nome</label><input type="text" class="wit-nome"></div>
+            <div class="field"><label>Telefone</label><input type="text" class="wit-tel"></div>
+            <div class="field"><label>Documento</label><input type="text" class="wit-doc"></div>
+        </div>
+    `;
+    container.appendChild(div);
+}
+function removeWitness(id){ document.getElementById("witness-" + id)?.remove(); }
+
+function clearForm(){
+    if(confirm("Deseja limpar o formulário?")){
+        document.querySelectorAll("input[type='text'], input[type='date'], input[type='time'], textarea").forEach(el => el.value = "");
+        document.querySelectorAll("select").forEach(el => el.selectedIndex = 0);
+        document.querySelectorAll("input[type='checkbox'], input[type='radio']").forEach(el => el.checked = false);
+        document.getElementById("witnessList").innerHTML = "";
+        uploadedImages = [];
+        renderizarImagens();
+        tratarCondicionais();
+        atualizarMapas(-26.3044, -48.8464, "Joinville, SC");
+    }
+}
+
+/* =========================================================================
+   FUNÇÃO DE COMPILAÇÃO DO RELATÓRIO PARA PDF
+   ========================================================================= */
+function prepararRelatorioExecutivo() {
+    // 1. Identificação
+    document.getElementById("r-protocolo").innerText = document.getElementById("protocolo").value || "Não informado";
+    document.getElementById("r-operador").innerText = document.getElementById("operador").value || "Não informado";
+    document.getElementById("r-turno").innerText = document.getElementById("turno").value || "Não informado";
+    
+    const data = document.getElementById("dataOcorrencia").value;
+    const hora = document.getElementById("horaOcorrencia").value;
+    document.getElementById("r-datahora").innerText = (data || hora) ? `${data ? data.split('-').reverse().join('/') : ''} ${hora ? 'às ' + hora : ''}` : "Não informada";
+
+    // 2. Cliente e Localização
+    document.getElementById("r-cliente").innerText = document.getElementById("cliente").value || "Não informado";
+    document.getElementById("r-cidade").innerText = document.getElementById("cidade").value || "Joinville, SC";
+    document.getElementById("r-endereco").innerText = document.getElementById("endereco").value || "Não informado";
+    document.getElementById("r-contatoNome").innerText = document.getElementById("contatoNome").value || "Não informado";
+    document.getElementById("r-contatoTel").innerText = document.getElementById("contatoTel").value || "Não informado";
+
+    // 3. Serviços, Ocorrências e Autoridades (checkboxes)
+    const servicos = Array.from(document.querySelectorAll('input[name="servico"]:checked')).map(el => el.value);
+    document.getElementById("r-servicos").innerText = servicos.length > 0 ? servicos.join(', ') : "Nenhum selecionado";
+
+    const tipos = Array.from(document.querySelectorAll('input[name="tipoOcorrencia"]:checked')).map(el => el.value);
+    document.getElementById("r-tiposOcorrencia").innerText = tipos.length > 0 ? tipos.join(', ') : "Não especificado";
+
+    const autoridades = Array.from(document.querySelectorAll('input[name="autoridade"]:checked')).map(el => el.value);
+    document.getElementById("r-autoridades").innerText = autoridades.length > 0 ? autoridades.join(', ') : "Nenhuma acionada";
+
+    document.getElementById("r-alarmeStatus").innerText = radioValue("sistemaAlarme") || "Não informado";
+    document.getElementById("r-zonaDisparada").innerText = document.getElementById("zonaDisparada").value || "N/A";
+    document.getElementById("r-numeroBO").innerText = document.getElementById("numeroBO").value || "Não registrado";
+
+    // 4. Tempos, Vítimas e Vigilante
+    const disparo = radioValue("disparo");
+    document.getElementById("r-disparoSimNao").innerText = disparo ? `Sim (${document.getElementById("horaDisparo").value || 'horário não inf.'})` : "Não";
+    document.getElementById("r-horaDisparo").innerText = document.getElementById("horaDisparo").value || "N/A";
+    document.getElementById("r-horaAtendente").innerText = document.getElementById("horaAtendente").value || "Não informado";
+    document.getElementById("r-tempoTotalAtend").innerText = document.getElementById("tempoTotalAtend").value || "Não calculado";
+
+    const houveVitimas = radioValue("houveVitimas");
+    if(houveVitimas === "Sim") {
+        document.getElementById("r-vitimasInfo").innerText = `Sim (${document.getElementById("numVitimas").value || '1'} vítima(s) - Gravidade: ${document.getElementById("gravidadeVitima").value || 'Não informada'})`;
+    } else {
+        document.getElementById("r-vitimasInfo").innerText = "Não houve vítimas";
+    }
+
+    const vigLocal = radioValue("vigNoLocal");
+    if(vigLocal === "Sim") {
+        const rendido = radioValue("vigRendido") === "Sim" ? "Sim (Rendido)" : "Não (Não rendido)";
+        document.getElementById("r-vigilanteInfo").innerText = `Sim - ${document.getElementById("nomeVigilante").value || 'Nome não inf.'} | Rendido: ${rendido}`;
+    } else {
+        document.getElementById("r-vigilanteInfo").innerText = "Não havia vigilante no local";
+    }
+
+    // 5. Danos
+    const danos = document.getElementById("danosDesc").value.trim();
+    if(danos) {
+        document.getElementById("r-danosDesc").innerText = danos;
+        document.getElementById("sec-danos-print").style.display = "block";
+    } else {
+        document.getElementById("sec-danos-print").style.display = "none";
+    }
+
+    // 6. Testemunhas
+    const witnessItems = document.querySelectorAll('.witness');
+    const witnessContainerPrint = document.getElementById("r-testemunhasList");
+    witnessContainerPrint.innerHTML = "";
+    if(witnessItems.length > 0) {
+        document.getElementById("sec-testemunhas-print").style.display = "block";
+        witnessItems.forEach((item, idx) => {
+            const nome = item.querySelector('.wit-nome')?.value || 'Não inf.';
+            const tel = item.querySelector('.wit-tel')?.value || 'Não inf.';
+            const doc = item.querySelector('.wit-doc')?.value || 'Não inf.';
+            const p = document.createElement("div");
+            p.style.marginBottom = "4px";
+            p.innerHTML = `<strong>${idx+1}. ${nome}</strong> — Tel: ${tel} | Doc: ${doc}`;
+            witnessContainerPrint.appendChild(p);
+        });
+    } else {
+        document.getElementById("sec-testemunhas-print").style.display = "none";
+    }
+
+    // 7. Relato
+    document.getElementById("r-relato").innerText = document.getElementById("relato").value.trim() || "Nenhum relato detalhado registrado para esta ocorrência.";
+}
+
+function validateAndPrint(){
+    const agora = new Date();
+    document.getElementById("printDataEmissao").innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+    
+    // Compila os dados da tela para o relatório formatado
+    prepararRelatorioExecutivo();
+    
+    // Aplicação das correções de renderização do mapa e redimensionamento antes do PDF
+    setTimeout(() => {
+        if (mapPrincipalPrint) {
+            mapPrincipalPrint.invalidateSize(true);
+            mapPrincipalPrint.setView([ultimaLat, ultimaLon], 15, { animate: false });
+        }
+        window.print();
+    }, 400);
+}
+
+/* =========================================================    GESTOR DE MAPAS GOOGLE MAPS HD   ========================================================= */
+let mapPrincipal = null;
+let mapSatelite = null;
+let mapTerreno = null;
+let mapPrincipalPrint = null;
+
+let markerPrincipal = null;
+let markerSatelite = null;
+let markerTerreno = null;
+let markerPrincipalPrint = null;
+
+let ultimaLat = -26.3044;
+let ultimaLon = -48.8464;
+let ultimaDesc = "Joinville, SC";
+
+const iconeVermelho = L.icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
+
+function initMaps() {
+    if (mapPrincipal) return;
+
+    mapPrincipal = L.map('mapaPrincipal', { zoomControl: false }).setView([ultimaLat, ultimaLon], 15);
+    L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: '&copy; Google Maps'
+    }).addTo(mapPrincipal);
+    markerPrincipal = L.marker([ultimaLat, ultimaLon], { icon: iconeVermelho }).addTo(mapPrincipal);
+
+    mapSatelite = L.map('mapaSatelite', { zoomControl: false, attributionControl: false }).setView([ultimaLat, ultimaLon], 16);
+    L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    }).addTo(mapSatelite);
+    markerSatelite = L.marker([ultimaLat, ultimaLon], { icon: iconeVermelho }).addTo(mapSatelite);
+
+    mapTerreno = L.map('mapaTerreno', { zoomControl: false, attributionControl: false }).setView([ultimaLat, ultimaLon], 14);
+    L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+        maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    }).addTo(mapTerreno);
+    markerTerreno = L.marker([ultimaLat, ultimaLon], { icon: iconeVermelho }).addTo(mapTerreno);
+
+    // Mapa exclusivo para o relatório impresso
+    mapPrincipalPrint = L.map('mapaPrincipalPrint', { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false }).setView([ultimaLat, ultimaLon], 15);
+    L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+    }).addTo(mapPrincipalPrint);
+    markerPrincipalPrint = L.marker([ultimaLat, ultimaLon], { icon: iconeVermelho }).addTo(mapPrincipalPrint);
+
+    atualizarLinksMaps(ultimaLat, ultimaLon, ultimaDesc);
+
+    setTimeout(() => {
+        [mapPrincipal, mapSatelite, mapTerreno, mapPrincipalPrint].forEach(map => {
+            if (map) map.invalidateSize(true);
+        });
+        atualizarMapas(ultimaLat, ultimaLon, ultimaDesc);
+    }, 250);
+}
+
+function atualizarMapas(lat, lon, descricao) {
+    ultimaLat = lat;
+    ultimaLon = lon;
+    ultimaDesc = descricao;
+
+    if (!mapPrincipal) {
+        initMaps();
+        return;
+    }
+
+    const novaCoord = [lat, lon];
+    
+    [
+        { map: mapPrincipal, marker: markerPrincipal, zoom: 15 },
+        { map: mapSatelite, marker: markerSatelite, zoom: 16 },
+        { map: mapTerreno, marker: markerTerreno, zoom: 14 },
+        { map: mapPrincipalPrint, marker: markerPrincipalPrint, zoom: 15 }
+    ].forEach(item => {
+        if (item.map) {
+            item.map.invalidateSize(true);
+            item.map.setView(novaCoord, item.zoom, { animate: false });
+            if (item.marker) {
+                item.marker.setLatLng(novaCoord);
+            }
+        }
+    });
+
+    atualizarLinksMaps(lat, lon, descricao);
+}
+
+function atualizarLinksMaps(lat, lon, descricao) {
+    const urlMain = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+    document.getElementById('linkMapsPrincipal').href = urlMain;
+    document.getElementById('linkMapsSatelite').href = urlMain;
+    document.getElementById('linkMapsTerreno').href = urlMain;
+}
+
+let timeoutBusca = null;
+function buscarEnderecos(termo) {
+    clearTimeout(timeoutBusca);
+    const box = document.getElementById('suggestionsBox');
+    if (termo.length < 3) {
+        box.style.display = 'none';
+        return;
+    }
+
+    timeoutBusca = setTimeout(() => {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termo + ", Joinville, SC")}&limit=5`;
+
+        fetch(url, { headers: { 'Accept-Language': 'pt-BR' } })
+            .then(res => res.json())
+            .then(data => {
+                box.innerHTML = '';
+                if (data.length === 0) {
+                    box.style.display = 'none';
+                    return;
+                }
+
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    div.textContent = item.display_name;
+                    div.onclick = () => {
+                        document.getElementById('endereco').value = item.display_name;
+                        box.style.display = 'none';
+                        atualizarMapas(parseFloat(item.lat), parseFloat(item.lon), item.display_name);
+                    };
+                    box.appendChild(div);
+                });
+                box.style.display = 'block';
+            })
+            .catch(err => console.error("Erro na busca de endereço:", err));
+    }, 300);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    initMaps();
+});
+</script>
+</body>
+</html>
+
+Avalie esse código, veja todos os defeitos
